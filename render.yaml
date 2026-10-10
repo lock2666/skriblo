@@ -1,0 +1,14 @@
+# إعداد النشر على Render.com (خطة مجانية)
+# https://render.com  →  New +  →  Blueprint  →  اختر هذا المستودع
+services:
+  - type: web
+    name: skriblo
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

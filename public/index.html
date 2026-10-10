@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>سكربلو | لعبة الرسم والتخمين الجماعية</title>
+  <meta name="description" content="سكربلو - لعبة جماعية أونلاين: ارسموا وخمّنوا مع دردشة صوتية نصية فورية بالعربية" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="config.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // إذا كان السيرفر خارجياً (GitHub Pages) نحمّل مكتبة socket.io من CDN
+    if (typeof io === 'undefined') {
+      document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');
+    }
+  </script>
+</head>
+<body>
+
+  <!-- ======================= شاشة الدخول ======================= -->
+  <section id="screen-login" class="screen active">
+    <div class="login-card">
+      <header class="brand">
+        <div class="brand-logo">
+          <span class="logo-pencil">✏️</span>
+          <h1 class="logo-text">سكرب<span>لو</span></h1>
+        </div>
+        <p class="tagline">ارسم… وخمّنوا معاً! لعبة جماعية أونلاين بالعربية</p>
+      </header>
+
+      <div class="field">
+        <label for="nameInput">اسمك في اللعبة</label>
+        <input id="nameInput" type="text" maxlength="14" placeholder="مثال: عبدالله" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label>اختر صورتك الرمزية</label>
+        <div id="avatarPicker" class="avatar-picker"></div>
+      </div>
+
+      <div class="login-actions">
+        <button id="btnCreate" class="btn btn-primary">🎨 إنشاء غرفة جديدة</button>
+        <div class="join-box">
+          <input id="roomCodeInput" type="text" maxlength="4" placeholder="رمز الغرفة" autocomplete="off" />
+          <button id="btnJoin" class="btn btn-outline">انضم</button>
+        </div>
+      </div>
+
+      <div class="howto">
+        <h3>كيف تلعب؟</h3>
+        <ul>
+          <li>🎯 أنشئ غرفة وشارك الرابط مع أصدقائك (من 2 إلى 12 لاعباً).</li>
+          <li>✏️ في كل دور لاعب يرسم كلمة، والبقية يخمّنون في الدردشة.</li>
+          <li>⭐ <b>كل من يجيب الكلمة يأخذ نقاط</b> (أسرع = نقاط أعلى، +10 مكافأة للأول)، والرسام يأخذ 25 نقطة عن كل تخمين صحيح.</li>
+          <li>💡 عدد الهنتات (كشف الحروف) تحدده أنت من إعدادات الغرفة.</li>
+          <li>🏆 بعد كل الجولات يفوز صاحب أعلى نقاط.</li>
+        </ul>
+      </div>
+      <p id="loginError" class="error-msg"></p>
+    </div>
+  </section>
+
+  <!-- ======================= شاشة الغرفة / اللعبة ======================= -->
+  <section id="screen-game" class="screen">
+    <div class="game-layout">
+
+      <!-- الرأس -->
+      <header class="topbar">
+        <div class="topbar-side">
+          <div class="room-chip" title="رمز الغرفة - شاركه مع أصدقائك">
+            <span class="room-label">الغرفة</span>
+            <span id="roomCodeDisplay" class="room-code">----</span>
+            <button id="btnCopyLink" class="icon-btn" title="نسخ رابط الدعوة">🔗</button>
+          </div>
+          <button id="btnLeave" class="btn btn-ghost">خروج</button>
+        </div>
+        <div class="topbar-center">
+          <div id="roundInfo" class="round-info">—</div>
+          <div id="wordBar" class="word-bar hidden"></div>
+        </div>
+        <div class="topbar-side left">
+          <div id="timerWrap" class="timer-wrap hidden">
+            <span id="timerText" class="timer-text">0</span>
+            <div class="timer-track"><div id="timerFill" class="timer-fill"></div></div>
+          </div>
+        </div>
+      </header>
+
+      <main class="game-main">
+        <!-- اللاعبون + الأدوات -->
+        <aside class="sidebar-players">
+          <h2 class="panel-title">اللاعبون</h2>
+          <ul id="playersList" class="players-list"></ul>
+          <div id="lobbyPanel" class="lobby-panel">
+            <h3>إعدادات المضيف</h3>
+            <label>عدد الجولات
+              <input id="setRounds" type="number" min="1" max="10" value="3" />
+            </label>
+            <label>مدة الرسم (ثانية)
+              <input id="setTime" type="number" min="30" max="240" step="10" value="80" />
+            </label>
+            <label>اللغة
+              <select id="setLang">
+                <option value="ar" selected>العربية</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label id="styleLabel">نوع الكلمات العربية
+              <select id="setStyle">
+                <option value="fusha">الفصحى</option>
+                <option value="dialect" selected>العامية (فكاهية)</option>
+                <option value="mix">فصحى + عامية</option>
+              </select>
+            </label>
+            <label>الصعوبة
+              <select id="setDifficulty">
+                <option value="easy">سهل</option>
+                <option value="medium">متوسط</option>
+                <option value="hard">صعب</option>
+                <option value="mix" selected>متنوع</option>
+              </select>
+            </label>
+            <label>عدد الهنتات (كشف الحروف)
+              <select id="setHints">
+                <option value="0">بدون هنتات</option>
+                <option value="1">هنت واحدة</option>
+                <option value="2">هنتان</option>
+                <option value="3">3 هنتات</option>
+                <option value="4" selected>4 هنتات</option>
+                <option value="6">6 هنتات</option>
+                <option value="8">8 هنتات</option>
+              </select>
+            </label>
+            <label>كلمات مخصصة (افصل بينها بفاصلة)
+              <textarea id="setCustom" rows="2" placeholder="سيارة, قطار, بيت"></textarea>
+            </label>
+            <label class="check">
+              <input id="setCustomOnly" type="checkbox" />
+              <span>الرسم من الكلمات المخصصة فقط</span>
+            </label>
+            <button id="btnStart" class="btn btn-primary">▶ ابدأ اللعبة</button>
+          </div>
+          <p id="hostHint" class="host-hint">بانتظار المضيف ليبدأ اللعبة…</p>
+        </aside>
+
+        <!-- اللوحة والأدوات -->
+        <section class="canvas-area">
+          <div id="canvasWrap" class="canvas-wrap">
+            <canvas id="board" width="1280" height="800"></canvas>
+            <div id="chooseOverlay" class="overlay hidden">
+              <div class="overlay-card">
+                <h2>اختر كلمة لرسمها</h2>
+                <div id="wordChoices" class="word-choices"></div>
+              </div>
+            </div>
+            <div id="waitOverlay" class="overlay hidden">
+              <div class="overlay-card">
+                <div class="spinner"></div>
+                <h2 id="waitText">بانتظار اختيار الكلمة…</h2>
+              </div>
+            </div>
+            <div id="revealOverlay" class="overlay hidden">
+              <div class="overlay-card">
+                <h2>الكلمة كانت</h2>
+                <div id="revealWord" class="reveal-word">—</div>
+                <div id="revealScores" class="reveal-scores"></div>
+              </div>
+            </div>
+            <div id="endOverlay" class="overlay hidden">
+              <div class="overlay-card">
+                <h2>🏆 النتائج النهائية</h2>
+                <ol id="podium" class="podium"></ol>
+                <button id="btnRematch" class="btn btn-primary hidden">🔄 العبوا من جديد</button>
+                <button id="btnBackLobby" class="btn btn-outline">رجوع للغرفة</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- شريط الأدوات (للرسام فقط) -->
+          <div id="toolbar" class="toolbar hidden">
+            <div class="tool-group colors" id="colorPalette"></div>
+            <div class="tool-group sizes">
+              <button class="size-btn" data-size="4" title="رفيع"></button>
+              <button class="size-btn active" data-size="10" title="متوسط"></button>
+              <button class="size-btn" data-size="22" title="عريض"></button>
+            </div>
+            <div class="tool-group actions">
+              <button id="btnEraser" class="tool-btn" title="ممحاة">🧽</button>
+              <button id="btnFill" class="tool-btn" title="تعبئة لون">🪣</button>
+              <button id="btnUndo" class="tool-btn" title="تراجع">↩️</button>
+              <button id="btnClear" class="tool-btn" title="مسح الكل">🗑️</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- الدردشة -->
+        <aside class="sidebar-chat">
+          <h2 class="panel-title">💬 الدردشة</h2>
+          <div id="chatLog" class="chat-log"></div>
+          <div id="guessStatus" class="guess-status hidden">✅ خمّنت الكلمة! بانتظار بقية اللاعبين…</div>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" type="text" maxlength="300" placeholder="اكتب تخمينك أو رسالة…" autocomplete="off" />
+            <button class="btn btn-primary" type="submit">إرسال</button>
+          </form>
+        </aside>
+      </main>
+    </div>
+  </section>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
