@@ -37,6 +37,26 @@
     t._timer = setTimeout(() => t.classList.add('hidden'), ms);
   }
 
+  /* --------------- حالة الاتصال بالسيرفر --------------- */
+  const NO_SERVER_MSG = '⚠️ لا يوجد سيرفر متصل!\n\n' +
+    '• إذا كنت تلعب محلياً: شغّل السيرفر بملف «ابدأ.bat» ثم افتح http://localhost:3000\n' +
+    '• إذا فتحت الموقع المنشور: انشر السيرفر على Render وضع رابطه في public/config.js';
+
+  function ensureServer() {
+    if (socket.connected) return true;
+    $('loginError').textContent = NO_SERVER_MSG.replace(/\n\n/g, '\n');
+    $('serverBanner').classList.remove('hidden');
+    $('serverBanner').textContent = '🔴 غير متصل بسيرفر اللعبة — لن تتمكن من إنشاء غرفة أو الانضمام';
+    return false;
+  }
+
+  socket.on('connect_error', () => {
+    $('serverBanner').classList.remove('hidden');
+    $('serverBanner').textContent = '🔴 فشل الاتصال بسيرفر اللعبة';
+  });
+  socket.on('connect', () => $('serverBanner').classList.add('hidden'));
+  socket.on('connect_failed', () => $('serverBanner').classList.remove('hidden'));
+
   // نقاط تطفو في وسط الشاشة عند التخمين الصحيح
   function showFloatPoints(text) {
     const el = document.createElement('div');
@@ -76,6 +96,8 @@
   $('btnCreate').addEventListener('click', () => {
     const name = $('nameInput').value.trim();
     if (!name) return $('loginError').textContent = 'اكتب اسمك أولاً 🙂';
+    localStorage.setItem('skriblo.name', name);
+    if (!ensureServer()) return;
     $('loginError').textContent = '';
     socket.emit('room:create', { name, avatar: chosenAvatar() }, (res) => {
       if (!res.ok) return $('loginError').textContent = res.error;
@@ -88,6 +110,8 @@
     const roomId = $('roomCodeInput').value.trim().toUpperCase();
     if (!name) return $('loginError').textContent = 'اكتب اسمك أولاً 🙂';
     if (roomId.length !== 4) return $('loginError').textContent = 'رمز الغرفة يجب أن يكون 4 أحرف.';
+    localStorage.setItem('skriblo.name', name);
+    if (!ensureServer()) return;
     $('loginError').textContent = '';
     socket.emit('room:join', { roomId, name, avatar: chosenAvatar(), playerId: myId }, (res) => {
       if (!res.ok) return $('loginError').textContent = res.error;
