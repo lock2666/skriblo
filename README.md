@@ -27,20 +27,29 @@ npm start
 | الواجهة (public/) | HTML/CSS/JS | **GitHub Pages** |
 | السيرفر (server.js + socket.io) | Node.js | **Render.com** (مجاني) |
 
-### 1) انشر السيرفر على Render (مجاني)
-1. أنشئ حساباً على [render.com](https://render.com) واربطه بـ GitHub.
-2. **New + → Blueprint** واختر هذا المستودع (يقرأ `render.yaml` تلقائياً).
-3. انتظر اكتمال النشر وانسخ رابط السيرفر (مثل `https://skriblo.onrender.com`).
+### 1) انشر السيرفر على Render (مجاني، من مستودع GitHub)
 
-> الخطة المجانية «تنام» بعد ~15 دقيقة من عدم الاستخدام، فأول اتصال يأخذ ~30 ثانية للاستيقاظ.
+**أسهل طريق — رابط نشر مباشر (ضغطة واحدة):**
+👉 [https://render.com/deploy?repo=https://github.com/lock2666/skriblo](https://render.com/deploy?repo=https://github.com/lock2666/skriblo)
 
-### 2) انشر الواجهة على GitHub Pages
-1. في GitHub: **Settings → Pages → Source: GitHub Actions**.
-2. عدّل `public/config.js` وضع رابط سيرفر Render:
-   ```js
-   window.SKRIBLO_SERVER = 'https://skriblo.onrender.com';
-   ```
-3. ادفع التغيير (push) — سيُنشر تلقائياً على `https://<user>.github.io/<repo>/`.
+1. سجّل الدخول بحساب GitHub في Render (مجاني، بدون بطاقة بنكية).
+2. ستظهر صفحة والمستودع `skriblo` محدد مسبقاً → اضغط **Apply**.
+3. انتظر ~3 دقائق حتى يكتمل النشر، ثم انسخ رابط السيرفر (مثل `https://skriblo.onrender.com`).
+
+> ✅ كل شيء يحدث على GitHub والإنترنت: أي تعديل تدفعه (`git push`) يُنشر تلقائياً. جهازك يبقى مُطفألاً بلا مشكلة.
+>
+> ⚠️ الخطة المجانية «تنام» بعد ~15 دقيقة من عدم الاستخدام، وأول اتصال بعدها يأخذ ~30 ثانية للاستيقاظ.
+
+### 2) اربط الواجهة بالسيرفر
+عدّل `public/config.js`:
+```js
+window.SKRIBLO_SERVER = 'https://skriblo.onrender.com';
+```
+ثم:
+```bash
+git add -A && git commit -m "ربط سيرفر Render" && git push
+```
+وسيعمل الموقع على `https://lock2666.github.io/skriblo/` مع الغرف والدردشة أونلاين 🎉
 
 ---
 
